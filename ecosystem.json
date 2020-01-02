@@ -1,7 +1,7 @@
 {
   "apps": [
     {
-      "name": "qunaer",
+      "name": "neo4jApi0",
       "script": "app.js",
       "watch": true,
       "env": {
@@ -20,8 +20,8 @@
       ],
       "port": "22000",
       "ref": "origin/master",
-      "repo": "git@github.com:xiaolizixiaolizi/node_qunaer.git",
-      "path": "/www/qunaer/production",
+      "repo": "git@github.com:xiaolizixiaolizi/neo4jApi0.git",
+      "path": "/www/neo4jApi0/production",
       "ssh_options": "StrictHostKeyChecking=no",
       "post-deploy": "npm install && pm2 startOrRestart ecosystem.json --env production",
       "env": {
