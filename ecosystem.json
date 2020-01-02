@@ -1,15 +1,11 @@
 {
   "apps": [
     {
-      "name": "neo4jApi0",
+      "name": "qunaer",
       "script": "app.js",
       "watch": true,
-      "ignore_watch": [
-        "node_modules",
-        "logs"
-      ],
       "env": {
-        "NODE_ENV": "development"
+        "COMMON_VARIABLE": "true"
       },
       "env_production": {
         "NODE_ENV": "production"
@@ -24,10 +20,10 @@
       ],
       "port": "22000",
       "ref": "origin/master",
-      "repo": "git@github.com:xiaolizixiaolizi/neo4jApi0.git",
-      "path": "/www/neo4jApi0/production",
+      "repo": "git@github.com:xiaolizixiaolizi/node_qunaer.git",
+      "path": "/www/qunaer/production",
       "ssh_options": "StrictHostKeyChecking=no",
-       "post-deploy": "npm install --register=https://register.npm.taobao.org && pm2 startOrRestart",
+      "post-deploy": "npm install && pm2 startOrRestart ecosystem.json --env production",
       "env": {
         "NODE_ENV": "production"
       }
