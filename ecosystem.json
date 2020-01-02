@@ -1,0 +1,36 @@
+{
+  "apps": [
+    {
+      "name": "neo4jApi0",
+      "script": "app.js",
+      "watch": true,
+      "ignore_watch": [
+        "node_modules",
+        "logs"
+      ],
+      "env": {
+        "NODE_ENV": "development"
+      },
+      "env_production": {
+        "NODE_ENV": "production"
+      }
+    }
+  ],
+  "deploy": {
+    "production": {
+      "user": "node_admin",
+      "host": [
+        "47.96.137.151"
+      ],
+      "port": "22000",
+      "ref": "origin/master",
+      "repo": "git@github.com:xiaolizixiaolizi/neo4jApi0.git",
+      "path": "/www/neo4jApi0/production",
+      "ssh_options": "StrictHostKeyChecking=no",
+       "post-deploy": "npm install --register=https://register.npm.taobao.org && pm2 startOrRestart",
+      "env": {
+        "NODE_ENV": "production"
+      }
+    }
+  }
+}
