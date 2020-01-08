@@ -14,11 +14,11 @@
   ],
   "deploy": {
     "production": {
-      "user": "node_admin",
+      "user": "root",
       "host": [
         "47.96.137.151"
       ],
-      "port": "22000",
+      "port": "22",
       "ref": "origin/master",
       "repo": "git@github.com:xiaolizixiaolizi/neo4jApi0.git",
       "path": "/www/neo4jApi0/production",
