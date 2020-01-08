@@ -6,5 +6,5 @@ router.get('/', ctx => {
 
   ctx.body = { url, path, query, querystring }
 })
-
+// 的太
 module.exports = router
