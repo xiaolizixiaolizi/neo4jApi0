@@ -8,3 +8,4 @@ module.exports = {
   DB_URL,
   secret: 'neo4jApi_secret'
 }
+
