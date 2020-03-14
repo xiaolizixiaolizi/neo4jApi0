@@ -7,7 +7,11 @@ const {
   neo4jCategoryFormat,
   neo4jGuoChengFormat,
   neo4jCategoryFormat1,
-  isEmpty
+  isEmpty,
+  findAll100,
+  findAll200,
+  findAll300,
+  findAll500
 } = require("../utils/index");
 // bolt://47.96.137.151:7687
 const driver = neo4j.driver(
@@ -28,6 +32,37 @@ module.exports = new (class Neo4jCtl {
         }
       );
     });
+  }
+
+  async creatNode(ctx) {
+    let { huaxueshi, zhongwenming, color, status, type } = ctx.request.body;
+    const statement = `MERGE (n:化学式 {name:'${zhongwenming}', 化学式:'${huaxueshi}',名称:'${zhongwenming}',水溶液状态:'${status}',物质类型:'${type}',颜色:'${color}'}) return n`;
+    const data = await session.run(statement);
+    // ctx.body = fn(data.records);
+    session.close();
+    ctx.body = { message: "创建成功" };
+  }
+
+  async creatLinks(ctx) {
+    let { lefts, rights, leixing, condition } = ctx.request.body;
+    let leftstr = "";
+    lefts.forEach((e, i) => {
+      let value = e.value;
+      let [a, b=''] = value.split(" "); //a化学式 b个数
+      leftstr += `反应物${i + 1}:'${a}',反应物${i + 1}个数:'${b}',`;
+    });
+    let rightstr = "";
+    rights.forEach((e, i) => {
+      let value = e.value;
+      let [a, b] = value.split(" "); //a化学式 b个数
+      rightstr += `生成物${i + 1}:'${a}',生成物${i + 1}个数:'${b}',`;
+    });
+    rightstr = rightstr.slice(0, -1);
+    const statement = `MERGE (n:化学方程 {name:'${leixing}', 反应条件:'${condition}',${leftstr}${rightstr}}) return id(n)`;
+    console.log("statement: ", statement);
+    const data = await session.run(statement);
+    ctx.body = { id: data.records[0]._fields[0].low };
+    session.close();
   }
 
   // create节点和关系
@@ -76,12 +111,27 @@ module.exports = new (class Neo4jCtl {
     ctx.body = { status: 200, message: "节点和关系插入成功" };
   }
   // 查所有数据
-  async find(ctx) {
-    let statement =
-      "MATCH (m)-[r]->(n) RETURN m ,n,r,type(r),m.title,labels(m),labels(n)";
-    let data = await session.run(statement);
+  async findAll(ctx) {
+    let { number } = ctx.params; //注意number传过来的是string类型
+    let statement = "";
+    let fn;
+    if (number == 100) {
+      statement = `MATCH (a)-[r]->(b) where type(r) in ['属于']RETURN a,b,r LIMIT 100`;
+      fn = findAll100;
+    } else if (number == 200) {
+      statement = `MATCH (a)-[r]->(b) where b.物质类型<>'盐' and b.物质类型<>'酸' and type(r) in ['属于','化学式的构成成分']  RETURN a,b,r LIMIT 150`;
+      fn = findAll200;
+    } else if (number == 300) {
+      statement = `MATCH(a)-[r]-(x:化学方程)-[r1]->(b) where x.name in ["化合反应",'分解反应','置换反应']RETURN a,b,x,r,r1`;
+      fn = findAll300;
+    } else if (number == 500) {
+      statement = `MATCH (a)-[r]->(b) RETURN a,b,r`;
+      fn = findAll500;
+    }
+
+    const data = await session.run(statement);
+    ctx.body = fn(data.records);
     session.close();
-    ctx.body = data.records;
   }
 
   //查化学式的构成成分
@@ -212,6 +262,43 @@ module.exports = new (class Neo4jCtl {
     // ctx.body = response.records
     ctx.body = data;
   }
+  async fingFCid(ctx) {
+    let { id } = ctx.params;
+    const statement = `match (n:化学方程)  where id(n)=${id} return n`;
+    let response = await session.run(statement);
+    let res = response.records[0]._fields[0];
+    let tempdata = { id: res.identity.low, ...res.properties };
+    const data = {
+      type: tempdata.name,
+      conditon: tempdata["反应条件"] == "" ? "常温" : tempdata["反应条件"],
+      value: []
+    };
+    const letfs = ["生成物1", "生成物2"];
+    letfs.forEach(e => {
+      if (tempdata[e]) {
+        data.value.push({
+          hxs: tempdata[e],
+          id: id,
+          relation: "生成物",
+          value: tempdata[e + "个数"]
+        });
+      }
+    });
+    const rights = ["反应物1", "反应物2", "反应物3"];
+    rights.forEach(e => {
+      if (tempdata[e]) {
+        data.value.push({
+          hxs: tempdata[e],
+          id: id,
+          relation: "反应物",
+          value: tempdata[e + "个数"]
+        });
+      }
+    });
+    ctx.body = data;
+    session.close();
+  }
+
   //查一个物质所能发生的所有化学方程，并且返回化学方程id数组
   async findFangChengId(ctx) {
     let { huaxueshi } = ctx.params;
@@ -221,6 +308,16 @@ module.exports = new (class Neo4jCtl {
     ctx.body = res;
     session.close();
   }
+  //查图谱中存在的化学式名字 返回名字列表
+  async findAllName(ctx) {
+    console.log("findAllName:");
+    const statement = "MATCH (n:化学式) RETURN collect(n.name)";
+    let response = await session.run(statement);
+    let res = response.records[0]._fields[0];
+    ctx.body = res;
+    session.close();
+  }
+
   //one to all 最新
   async findOneTOall(ctx) {
     let { huaxueshi } = ctx.params;
@@ -301,13 +398,12 @@ module.exports = new (class Neo4jCtl {
     let thirdStr = fn(thirdObj);
     totalStatement = totalStatement + firstStr + secondStr + thirdStr;
     totalStatement = totalStatement.replace("where and", "where");
-    totalStatement+=` RETURN a,b,c, x, y,r,r1,r2,r3`
-    console.log('totalStatement: ', totalStatement);
+    totalStatement += ` RETURN a,b,c, x, y,r,r1,r2,r3`;
+    // console.log("totalStatement: ", totalStatement);
     let response = await session.run(totalStatement);
     const data = neo4jDataFormat(response.records);
     session.close();
     ctx.body = data;
- 
   }
   //推断
   async duiTuan(ctx) {
