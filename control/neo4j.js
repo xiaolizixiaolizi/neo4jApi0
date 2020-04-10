@@ -11,7 +11,7 @@ const {
   findAll100,
   findAll200,
   findAll300,
-  findAll500
+  findAll500,
 } = require("../utils/index");
 // bolt://47.96.137.151:7687
 const driver = neo4j.driver(
@@ -48,7 +48,7 @@ module.exports = new (class Neo4jCtl {
     let leftstr = "";
     lefts.forEach((e, i) => {
       let value = e.value;
-      let [a, b=''] = value.split(" "); //a化学式 b个数
+      let [a, b = ""] = value.split(" "); //a化学式 b个数
       leftstr += `反应物${i + 1}:'${a}',反应物${i + 1}个数:'${b}',`;
     });
     let rightstr = "";
@@ -88,7 +88,7 @@ module.exports = new (class Neo4jCtl {
       endNodeLabel,
       endNodeTitle,
       actionType,
-      message = ""
+      message = "",
     } = ctx.request.body;
     let statement = `MERGE (${startNode}:${startNodeLabel} {title:'${startNodeTitle}'})
     MERGE (${endNode}:${endNodeLabel} {title:'${endNodeTitle}'})
@@ -153,17 +153,17 @@ module.exports = new (class Neo4jCtl {
       "MATCH (n) WHERE EXISTS(n.`元素名称`)   RETURN DISTINCT n";
     let statement_lizi = "MATCH (n:`离子`) RETURN n";
     let res = await session.run(statement);
-    let data = res.records.map(e => e._fields[0].properties);
+    let data = res.records.map((e) => e._fields[0].properties);
 
     let res_yuansu = await session.run(statement_yuansu);
-    let data_yuansu = res_yuansu.records.map(e => e._fields[0].properties);
+    let data_yuansu = res_yuansu.records.map((e) => e._fields[0].properties);
 
     let res_lizi = await session.run(statement_lizi);
-    let data_lizi = res_lizi.records.map(e => e._fields[0].properties);
+    let data_lizi = res_lizi.records.map((e) => e._fields[0].properties);
     const treeData = [
       { id: 100, label: "元素", children: [] },
       { id: 101, label: "离子", children: [] },
-      { id: 102, label: "化学式", children: [] }
+      { id: 102, label: "化学式", children: [] },
     ];
     //化学式
     data.forEach((e, i) => {
@@ -175,7 +175,7 @@ module.exports = new (class Neo4jCtl {
       let obj = {};
       obj.id = 10 + i;
       obj.label = e;
-      obj.children = data.filter(obj => obj["物质类型"] == e);
+      obj.children = data.filter((obj) => obj["物质类型"] == e);
       treeData[2].children.push(obj);
     });
     // 收集元素
@@ -188,7 +188,7 @@ module.exports = new (class Neo4jCtl {
       let obj = {};
       obj.id = 30 + i;
       obj.label = e;
-      obj.children = data_yuansu.filter(obj => obj["元素类别"] == e);
+      obj.children = data_yuansu.filter((obj) => obj["元素类别"] == e);
       treeData[0].children.push(obj);
     });
     // 收集离子
@@ -202,7 +202,7 @@ module.exports = new (class Neo4jCtl {
       let obj = {};
       obj.id = 40 + i;
       obj.label = e;
-      obj.children = data_lizi.filter(obj => obj.type == e);
+      obj.children = data_lizi.filter((obj) => obj.type == e);
       treeData[1].children.push(obj);
     });
 
@@ -271,27 +271,27 @@ module.exports = new (class Neo4jCtl {
     const data = {
       type: tempdata.name,
       conditon: tempdata["反应条件"] == "" ? "常温" : tempdata["反应条件"],
-      value: []
+      value: [],
     };
     const letfs = ["生成物1", "生成物2"];
-    letfs.forEach(e => {
+    letfs.forEach((e) => {
       if (tempdata[e]) {
         data.value.push({
           hxs: tempdata[e],
           id: id,
           relation: "生成物",
-          value: tempdata[e + "个数"]
+          value: tempdata[e + "个数"],
         });
       }
     });
     const rights = ["反应物1", "反应物2", "反应物3"];
-    rights.forEach(e => {
+    rights.forEach((e) => {
       if (tempdata[e]) {
         data.value.push({
           hxs: tempdata[e],
           id: id,
           relation: "反应物",
-          value: tempdata[e + "个数"]
+          value: tempdata[e + "个数"],
         });
       }
     });
@@ -304,7 +304,7 @@ module.exports = new (class Neo4jCtl {
     let { huaxueshi } = ctx.params;
     const statement = `MATCH (a:化学式)-[r]-(b:化学方程) where a.化学式='${huaxueshi}'return collect(id(b))`;
     let response = await session.run(statement);
-    let res = response.records[0]._fields[0].map(e => e.low).map(String);
+    let res = response.records[0]._fields[0].map((e) => e.low).map(String);
     ctx.body = res;
     session.close();
   }
@@ -320,8 +320,16 @@ module.exports = new (class Neo4jCtl {
 
   //one to all 最新
   async findOneTOall(ctx) {
-    let { huaxueshi } = ctx.params;
-    const statement = `MATCH (a:化学式)-[r]-(b:化学方程)-[r1]-(c) where a.化学式='${huaxueshi}' RETURN a,b,c,r,r1,type(r),type(r1)`;
+    let { huaxueshi, tag = "" } = ctx.params;
+    let statement = "";
+    if (tag == 3)
+      statement = `MATCH (a:化学式)-[r]-(b:化学方程)-[r1]-(c) where a.化学式='${huaxueshi}' RETURN a,b,c,r,r1,type(r),type(r1)`;
+    // 反应物
+    else if (tag == 1)
+      statement = `MATCH (a:化学式)-[r]->(b:化学方程)-[r1]-(c) where a.化学式='${huaxueshi}' RETURN a,b,c,r,r1,type(r),type(r1)`;
+    // 生成物
+    else if (tag == 2)
+      statement = `MATCH (a:化学式)<-[r]-(b:化学方程)-[r1]-(c) where a.化学式='${huaxueshi}' RETURN a,b,c,r,r1,type(r),type(r1)`;
     const response = await session.run(statement);
     const data = neo4jDataFormat(response.records);
     ctx.body = data;
@@ -349,14 +357,14 @@ module.exports = new (class Neo4jCtl {
     // let statement1 = `MATCH (a:化学式)-[r]->(x:化学方程)-[r1]->(b:化学式)-[r2]->(y:化学方程)-[r3]->(c:化学式)
     // where a.水溶液状态="固体" and b.颜色 contains "蓝色" and c.化学式 in ["AgCl","BaSO4"] RETURN a,b,c, x, y,r,r1,r2,r3`;
 
-    let fn = object => {
+    let fn = (object) => {
       let str = "";
       for (const key in object) {
         if (object.hasOwnProperty(key)) {
           const element = object[key];
           if (object.label == "反应物") {
             if (key == "wuzhi" && !isEmpty(element)) {
-              let temp1 = element.map(e => `"${e}"`).join(",");
+              let temp1 = element.map((e) => `"${e}"`).join(",");
               str += `and a.化学式 in [${temp1}] `;
             } else if (key == "color" && !isEmpty(element)) {
               str += `and a.颜色 contains "${element}" `;
@@ -367,7 +375,7 @@ module.exports = new (class Neo4jCtl {
             }
           } else if (object.label == "中间产物") {
             if (key == "wuzhi" && !isEmpty(element)) {
-              let temp2 = element.map(e => `"${e}"`).join(",");
+              let temp2 = element.map((e) => `"${e}"`).join(",");
               str += `and b.化学式 in [${temp2}] `;
             } else if (key == "color" && !isEmpty(element)) {
               str += `and b.颜色 contains "${element}" `;
@@ -378,7 +386,7 @@ module.exports = new (class Neo4jCtl {
             }
           } else if (object.label == "生成物") {
             if (key == "wuzhi" && !isEmpty(element)) {
-              let temp3 = element.map(e => `"${e}"`).join(",");
+              let temp3 = element.map((e) => `"${e}"`).join(",");
               str += `and c.化学式 in [${temp3}] `;
             } else if (key == "color" && !isEmpty(element)) {
               str += `and c.颜色 contains "${element}" `;
@@ -408,7 +416,7 @@ module.exports = new (class Neo4jCtl {
   //推断
   async duiTuan(ctx) {
     let { info } = ctx.query;
-    let tempArr = info.split(" ").filter(e => e !== "\n");
+    let tempArr = info.split(" ").filter((e) => e !== "\n");
     function fn(arr, str) {
       let index = arr.indexOf(str);
       return [arr[index + 1], arr[index + 2], arr[index + 3]];
@@ -423,7 +431,7 @@ module.exports = new (class Neo4jCtl {
     qishiStr = qishiStr
       .split("and")
       .filter(
-        e =>
+        (e) =>
           !(
             e.includes('=""') ||
             e.includes('="不选颜色"') ||
@@ -439,7 +447,7 @@ module.exports = new (class Neo4jCtl {
     zhongStr = zhongStr
       .split("and")
       .filter(
-        e =>
+        (e) =>
           !(
             e.includes('=""') ||
             e.includes('="不选颜色"') ||
@@ -457,7 +465,7 @@ module.exports = new (class Neo4jCtl {
     jieShuStr = jieShuStr
       .split("and")
       .filter(
-        e =>
+        (e) =>
           !(
             e.includes('=""') ||
             e.includes('="不选颜色"') ||
